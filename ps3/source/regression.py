@@ -16,6 +16,8 @@ import numpy as np
 # matplotlib libraries
 import matplotlib.pyplot as plt
 
+import math
+
 ######################################################################
 # classes
 ######################################################################
@@ -119,13 +121,15 @@ class PolynomialRegression() :
         """
         
         n,d = X.shape
-        
         ### ========== TODO : START ========== ###
-        Phi = np.append(np.ones(shape = (n,1)), X, axis = 1)
+        
         # part b: modify to create matrix for simple linear model
+        Phi = np.ones(shape = (n,1))
+
         # part g: modify to create matrix for polynomial model
         # professor's solution: 3 lines (yours might be longer if you do not use numpy)
-        #
+        for i in range(1,self.m_ + 1):
+            Phi = np.append(Phi, np.power(X, i), axis = 1)
         # hint: use np.ones(...) and either np.append(...) or np.concatenate(...)
         #       be careful about the axis you join along (e.g. rows vs columns)
 
@@ -135,7 +139,7 @@ class PolynomialRegression() :
         return Phi
     
     
-    def fit_SGD(self, X, y, eta=0.01,
+    def fit_SGD(self, X, y, eta=None,
                 eps=1e-10, tmax=int(1e6),
                 verbose=False, plot=False) :
         """
@@ -178,7 +182,7 @@ class PolynomialRegression() :
             # change the default eta in the function signature to 'eta=None'
             # and update the line below to your learning rate function
             if eta_input is None :
-                eta = None # change this line
+                eta = 0.75 * (0.75**t) # change this line
             else :
                 eta = eta_input
             ### ========== TODO : END ========== ###
@@ -195,7 +199,9 @@ class PolynomialRegression() :
                 # track error
                 # hint: you cannot use self.predict(...) to make the predictions
                 #       (for your own edification, see if you can figure out why)
-                y_pred = y # change this line, update all predictions (not just this example)
+                y_pred = np.dot(Phi[i,:], self.coef_) 
+                self.coef_ = self.coef_ - (eta * (y_pred - y[i])) * Phi[i,:]
+                y_pred = np.matmul(Phi, self.coef_)
                 err_list[t] = np.sum(np.power(y - y_pred, 2)) / float(n)
                 ### ========== TODO : END ========== ###
             
@@ -259,6 +265,14 @@ class PolynomialRegression() :
         #
         # hint: use np.dot(...) and np.linalg.pinv(...)
 
+        """
+        before regularization
+        """
+        a = np.linalg.pinv(np.matmul(np.transpose(Phi), Phi))
+        b = np.matmul(a, np.transpose(Phi))
+
+        self.coef_ = np.dot(b, y)
+
         # to aid in grading
         # please put your code without regularization before this line
         # and your code with regularization after this line
@@ -287,9 +301,7 @@ class PolynomialRegression() :
         ### ========== TODO : START ========== ###
         # part c: predict y
         # professor's solution: 1 line
-        print("weights")
-        #print(np.transpose(self.coef_))
-        y = np.dot(Phi, self.coef_)
+        y = np.matmul(Phi, self.coef_)
         ### ========== TODO : END ========== ###
         
         return y
@@ -311,8 +323,8 @@ class PolynomialRegression() :
         ### ========== TODO : START ========== ###
         # part d: compute J(theta)
         # professor's solution: 2 lines
-        
-        cost = 0
+        y_pred = self.predict(X)
+        cost = 0.5 * np.sum(np.power(y - y_pred, 2))
         ### ========== TODO : END ========== ###
         return cost
     
@@ -333,8 +345,9 @@ class PolynomialRegression() :
         ### ========== TODO : START ========== ###
         # part h: compute RMSE
         # professor's solution: 3 lines
-        
-        error = 0
+        n,d = X.shape
+        cost = self.cost(X,y)
+        error = math.sqrt(2 * cost/n)
         ### ========== TODO : END ========== ###
         return error
     
@@ -415,7 +428,7 @@ def main() :
     # test part d, bullets 2-3
     # for eta = 1, soln: theta = [ 1.86944775 -4.01460353], iterations = 18
     start = time.process_time()
-    model.fit_SGD(train_data.X, train_data.y, eta=1)
+    model.fit_SGD(train_data.X, train_data.y, eta = 0.0001)
     end = time.process_time()
     print(f'sgd theta: {model.coef_} ({end-start:g} s)')
     
@@ -441,7 +454,6 @@ def main() :
     # toy data
     m = 2                                     # polynomial degree
     coefm = np.array([1,3,5]).reshape((3,))   # shape (3L,), theta_0 + theta_1 x + theta_2 x^2
-    
     # test part g -- soln: [[1 1 1]
     #                       [1 2 4]
     #                       [1 3 9]]
